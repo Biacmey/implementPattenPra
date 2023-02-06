@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sequences", "Sequences\Sequences.csproj", "{BCBF7784-9F68-45D3-B231-521B37852DDB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BCBF7784-9F68-45D3-B231-521B37852DDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCBF7784-9F68-45D3-B231-521B37852DDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCBF7784-9F68-45D3-B231-521B37852DDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCBF7784-9F68-45D3-B231-521B37852DDB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
