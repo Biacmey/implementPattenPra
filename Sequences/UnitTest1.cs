@@ -1,57 +1,58 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO.Enumeration;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using NUnit.Framework;
 
 namespace Sequences
 {
-    public static class EnumerableExtension
+    public static class EnumerableExtensions
     {
-        public static TSource WithMin<TSource,TResult>(this IEnumerable<TSource> enumerable, Func<TSource, TResult> keySelector)
-        where TSource : class
+        public static TSource WithMinimum<TSource,TResult>(this IEnumerable<TSource> enumerable, Func<TSource, TResult> criteria)
+        where TSource : class 
         where TResult : IComparable<TResult>
         {
             return enumerable
-                .Aggregate((TSource)null
-                    ,(best,current)=>best == null || keySelector(best).CompareTo(keySelector(current)) > 0
-                        ? current 
-                        : best);
+                .Aggregate(
+                    (TSource)null,
+                    (best, current) =>
+                        best == null || criteria(current).CompareTo(criteria(best)) < 0  ? current : best
+                );
         }
     }
-
     public class Tests
     {
         [SetUp]
         public void Setup()
         {
         }
+
         [Test]
         public void Test1()
         {
             var proportionalPainters = new ProportionalPainter[10];
-            var cheapestPainter = PainterFactory.CompositePainter(proportionalPainters);
+            var cheapestPainter = PainterFactory.CheapestPainter(proportionalPainters);
+
             Assert.Pass();
         }
+
         public IPainter FindCheapestPainter(double sqMeters, Painters painters)
         {
-            var painter = painters.GetAvailable().GetCheaperOne(sqMeters);
-            return null;
-        }
-        public IPainter FindFastestPainter(double sqMeters, Painters painters)
-        {
-            var enumerable = painters.GetAvailable().GetFatestOne(sqMeters);
-            return null;
+            return painters.GetIsAvailable().GetCheapestOne(sqMeters);
         }
 
-        public IPainter workTogether(double sqMeters, IEnumerable<IPainter> painters)
+        public IPainter FindFastestPainter(double sqMeters, Painters painters)
+        {
+            return painters.GetIsAvailable().GetFasterOne(sqMeters);
+        }
+
+        public IPainter WorkTogether(double sqMeters, IEnumerable<IPainter> painters)
         {
             var time = TimeSpan.FromHours(1/painters.Where(w=>w.IsAvailable).Sum(x=> 1 / x.EstimateTimeToPaint(sqMeters).TotalHours));
             var cost = painters.Where(w=>w.IsAvailable).Sum(x =>
                 x.EstimateCompensation(sqMeters) / x.EstimateTimeToPaint(sqMeters).TotalHours * time.TotalHours);
-            return ProportionalPainter.Create(time,cost,sqMeters);
+            return ProportionalPainter.Create(time, cost, sqMeters);
         }
     }
 
@@ -62,41 +63,48 @@ namespace Sequences
             TimePerSqMeter = timePerSqMeter;
             DollarPerHour = dollarPerHour;
         }
-
         public static ProportionalPainter Create(TimeSpan totalTime, double totalCost, double sqMeters )
         {
             var timePerSqMeter = TimeSpan.FromHours(totalTime.TotalHours / sqMeters);
             var dollarPerHour = totalCost / totalTime.TotalHours;
             return new ProportionalPainter(timePerSqMeter, dollarPerHour);
         }
-        public TimeSpan TimePerSqMeter { get;}
-        public double DollarPerHour { get;}
         public bool IsAvailable => true;
+        public TimeSpan TimePerSqMeter { get; }
+        public double DollarPerHour { get;}
         public TimeSpan EstimateTimeToPaint(double sqMeters)
         {
             return TimeSpan.FromHours(sqMeters * TimePerSqMeter.Hours);
         }
-
         public double EstimateCompensation(double sqMeters)
         {
             return EstimateTimeToPaint(sqMeters).Hours * DollarPerHour;
         }
     }
+
     public static class PainterFactory
     {
         public static IPainter CompositePainter(IEnumerable<ProportionalPainter> painters)
         {
-            return new CompositePainter<ProportionalPainter>(painters, (sqMeters, seqence) =>
+            return new CompositePainter<ProportionalPainter>(painters,(sqMeters, seqence) =>
             {
                 var time = TimeSpan.FromHours(1/seqence.Where(w=>w.IsAvailable).Sum(x=> 1 / x.EstimateTimeToPaint(sqMeters).TotalHours));
                 var cost = seqence.Where(w=>w.IsAvailable).Sum(x =>
                     x.EstimateCompensation(sqMeters) / x.EstimateTimeToPaint(sqMeters).TotalHours * time.TotalHours);
-                return ProportionalPainter.Create(time,cost,sqMeters);
-            });
+                return ProportionalPainter.Create(time, cost, sqMeters);
+            } );
+        }
+        public static IPainter FastestPainter(IEnumerable<IPainter> painters)
+        {
+            return new CompositePainter<IPainter>(painters, (sqMeters, seqenence) => new Painters(seqenence).GetFasterOne(sqMeters));
+        }
+        public static IPainter CheapestPainter(IEnumerable<IPainter> painters)
+        {
+            return new CompositePainter<IPainter>(painters, (sqMeters, seqenence) => new Painters(seqenence).GetCheapestOne(sqMeters));
         }
     }
     public class CompositePainter<TPainter> : IPainter
-        where TPainter : IPainter
+    where TPainter : IPainter
     {
         private IEnumerable<TPainter> Painters { get; }
 
@@ -114,16 +122,29 @@ namespace Sequences
         {
             return Reduce(sqMeters,Painters).EstimateCompensation(sqMeters);
         }
+        // public IPainter Reduce(double sqMeters, IEnumerable<IPainter> painters)
+        // {
+        //     var time = TimeSpan.FromHours(1/painters.Where(w=>w.IsAvailable).Sum(x=> 1 / x.EstimateTimeToPaint(sqMeters).TotalHours));
+        //     var cost = painters.Where(w=>w.IsAvailable).Sum(x =>
+        //         x.EstimateCompensation(sqMeters) / x.EstimateTimeToPaint(sqMeters).TotalHours * time.TotalHours);
+        //     return new ProportionalPainter()
+        //     {
+        //         TimePerSqMeter = TimeSpan.FromHours(time.TotalHours / sqMeters),
+        //         DollarPerHour = cost / time.TotalHours
+        //     };
+        // }
 
-        private Func<double,IEnumerable<TPainter>,TPainter> Reduce { get;}
+        public Func<double,IEnumerable<TPainter>,TPainter> Reduce { get; set; }
     }
+    
     public class Painters : IEnumerable<IPainter>
     {
+        private IEnumerable<IPainter> ContainPainters { get; }
+
         public Painters(IEnumerable<IPainter> containPainters)
         {
             ContainPainters = containPainters;
         }
-        private IEnumerable<IPainter> ContainPainters { get; }
         public IEnumerator<IPainter> GetEnumerator()
         {
             return ContainPainters.GetEnumerator();
@@ -132,18 +153,19 @@ namespace Sequences
         {
             return GetEnumerator();
         }
-        public Painters GetAvailable()
+        public Painters GetIsAvailable()
         {
             return new Painters(this.Where(w => w.IsAvailable));
         }
-        public IPainter GetCheaperOne(double sqMeters)
+
+        public IPainter GetCheapestOne(double sqMeters)
         {
-            return this.WithMin(o => o.EstimateCompensation(sqMeters));
+            return this.WithMinimum(o=>o.EstimateCompensation(sqMeters));
         }
 
-        public IPainter GetFatestOne(double sqMeters)
+        public IPainter GetFasterOne(double sqMeters)
         {
-            return this.WithMin(o => o.EstimateTimeToPaint(sqMeters));
+            return this.WithMinimum(o=>o.EstimateTimeToPaint(sqMeters));
         }
     }
 }
